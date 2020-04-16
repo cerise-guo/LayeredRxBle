@@ -3,7 +3,8 @@ package com.peripheral.ble;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 
-public interface BleGattListener {
+//Note: this interface is NOT public and only accessible internally by BLE module.
+interface BleGattListener {
     void onReadResult(final BluetoothGattCharacteristic characteristic, int status );
 
     void onWriteResult(final BluetoothGattCharacteristic characteristic, int status );

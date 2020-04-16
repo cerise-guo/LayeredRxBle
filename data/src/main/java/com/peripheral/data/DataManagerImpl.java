@@ -4,7 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.peripheral.ble.BLEDeviceInfo;
-import com.peripheral.ble.BLEScanResult;
+import com.peripheral.ble.DeviceFound;
 import com.peripheral.ble.DeviceManager;
 import com.peripheral.ble.DeviceManagerImpl;
 
@@ -12,16 +12,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Flowable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.subjects.BehaviorSubject;
 
 public class DataManagerImpl implements DataManager {
     final static String TAG_NAME = "DataManager";
 
     static private DataManager instance;
-    //private static BLEDeviceManager deviceManager;
     private static DeviceManager deviceManager;
-    private final BLEScanResult scanResult;
+    private final DeviceFound deviceFound;
     private String targetDeviceName;
     boolean initialized = false;
+
+    private Disposable deviceStatusDisposable;
+
+    private final BehaviorSubject<Boolean> deviceStatus = BehaviorSubject.create();
 
     Map<String, BLEDeviceInfo> deviceList = new HashMap<String, BLEDeviceInfo>();
     public static DataManager getInstance(){
@@ -34,9 +43,9 @@ public class DataManagerImpl implements DataManager {
     }
 
     private DataManagerImpl(){
-        scanResult = new BLEScanResult() {
+        deviceFound = new DeviceFound() {
             @Override
-            public void onScanResult(BLEDeviceInfo deviceInfo) {
+            public void onDeviceFound(BLEDeviceInfo deviceInfo) {
                 saveScanResult( deviceInfo );
 
             }
@@ -88,9 +97,19 @@ public class DataManagerImpl implements DataManager {
     public boolean initiate( Context context ){
 
         if (null == deviceManager) {
-            DeviceManagerImpl.initiate(context, this.scanResult);
+            DeviceManagerImpl.initiate(context, this.deviceFound);
             deviceManager = DeviceManagerImpl.getInstance();
         }
+
+        deviceStatusDisposable = Flowable.interval(1, TimeUnit.SECONDS)
+                .map( value ->{
+                    return deviceManager.isReadyToUse();
+                })
+                .distinctUntilChanged()
+                .subscribe( readyOrNot ->{
+                    deviceStatus.onNext( readyOrNot );
+                });
+
         initialized = true;
         return true;
     }
@@ -99,12 +118,7 @@ public class DataManagerImpl implements DataManager {
         return initialized;
     }
 
-    /*
-    public boolean isDeviceRead(){
-        if( null != deviceManager ){
-            return deviceManager.isReadyToUse();
-        }
-
-        return false;
-    }*/
+    public Flowable<Boolean> isDeviceReady(){
+        return deviceStatus.toFlowable(BackpressureStrategy.LATEST);
+    }
 }

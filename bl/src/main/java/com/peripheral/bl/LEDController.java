@@ -5,9 +5,14 @@ import android.util.Log;
 
 import com.peripheral.data.DeviceHelper;
 import com.peripheral.data.LEDCharacteristic;
-import com.peripheral.data.LEDStatusListener;
+//import com.peripheral.data.LEDStatusListener;
+import com.peripheral.logger.SimpleLogger;
 
-import java.lang.ref.WeakReference;
+//import java.lang.ref.WeakReference;
+
+//import io.reactivex.Single;
+//import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
 
 public class LEDController {
 
@@ -15,49 +20,56 @@ public class LEDController {
 
     private final LEDCharacteristic ledCharactertistic;
 
-    private WeakReference<LEDStatusCallback> ledStatusCallback;
+    Disposable ledDisposable = null;
 
     public LEDController(){
         this.ledCharactertistic = DeviceHelper.getDongleService().getLEDCharacter();
         if( null == ledCharactertistic ){
             throw new NullPointerException("Null LEDCharacteristic in LEDController ctor");
         }
+    }
 
-        this.ledCharactertistic.setListener(new LEDStatusListener() {
-            @Override
-            public void onLEDStatus(boolean isOn) {
-                Log.d(TAG_NAME, "onLEDStatus : " + isOn );
+    public void TurnOnLED( Boolean OnOrOff ){
 
-                final LEDStatusCallback statusCallback = ledStatusCallback.get();
-                if( null != statusCallback ){
-                    statusCallback.ledStatus( isOn );
-                }
-            }
+        final byte value = (byte)(OnOrOff?1:0);
 
-            @Override
-            public void onLEDChange(boolean success) {
+        if( ledDisposable != null && !ledDisposable.isDisposed()){
+            throw new RuntimeException("LED Controller get led status overlapped.");
+        }
 
+        ledDisposable = ledCharactertistic.writeValue(value).doOnSubscribe( disposable -> {
+            Log.d(TAG_NAME,"subscribe led write result");
+        }).doOnError( throwable -> {
+            Log.d(TAG_NAME,"subscribe led write exception: " + throwable );
+         }
+        ).subscribe( result ->{
+            SimpleLogger.getInstance().log(TAG_NAME, "RX LED write : " + result );
+            if( null != ledDisposable ) {
+                ledDisposable.dispose();
+                ledDisposable = null;
             }
         });
-
     }
 
-    public void TurnOnLED(){
-        ledCharactertistic.writeLEDValue( (byte)1);
+    public void getLEDStatus( LEDStatusCallback callback ){
+
+        if( ledDisposable != null && !ledDisposable.isDisposed()){
+            throw new RuntimeException("LED Controller get led status overlapped.");
+        }
+
+        ledDisposable = ledCharactertistic.readValue().doOnSubscribe( disposable -> {
+            Log.d(TAG_NAME,"subscribe led status");
+        }).subscribe( value->{
+            SimpleLogger.getInstance().log(TAG_NAME, "RX LED value: " + value );
+            callback.ledStatus( value );
+            if( null != ledDisposable ) {
+                ledDisposable.dispose();
+                ledDisposable = null;
+            }
+        });
     }
 
-    public void TurnOffLED(){
-        ledCharactertistic.writeLEDValue((byte)0);
+    public interface LEDStatusCallback{
+        void ledStatus( boolean OnOrOff );
     }
-
-    public void getLEDStatus(LEDStatusCallback callback ){
-        this.ledStatusCallback = new WeakReference<>(callback);
-
-        ledCharactertistic.readLEDValue();
-    }
-
-    public interface LEDStatusCallback {
-        void ledStatus( boolean isOn );
-    }
-
 }

@@ -14,18 +14,15 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.os.Handler;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 //import com.peripheral.data.BLEDeviceInfo;
 //import com.peripheral.data.DataManager;
 import com.peripheral.logger.SimpleLogger;
 
-import java.lang.ref.WeakReference;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -44,7 +41,7 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
     private int RESCAN_INTERVAL = 1000; //millisecond
 
     private boolean isScanning = false;
-    private final BLEScanResult scanResult;
+    private final DeviceFound deviceFound;
     private String targetDeviceName;
     private BluetoothGatt mGatt;
     private final Context context;
@@ -67,7 +64,7 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
 
     private CONNECTION_STATUS connectionStatus = CONNECTION_STATUS.DISCONNECTED;
 
-    public static boolean initiate(Context context, BLEScanResult scanResult ) {
+    public static boolean initiate(Context context, DeviceFound deviceFound ) {
 
         //if( null != BLEDeviceManager.mInstance ){
         //    Log.e(TAG_NAME, "device manager has been initialized");
@@ -87,14 +84,14 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
             return false;
         }
 
-        deviceManager = new DeviceManagerImpl(context, adapter, scanResult);
+        deviceManager = new DeviceManagerImpl(context, adapter, deviceFound);
         return true;
     }
 
-    private DeviceManagerImpl(Context context, BluetoothAdapter adapter, BLEScanResult scanResult) {
+    private DeviceManagerImpl(Context context, BluetoothAdapter adapter, DeviceFound deviceFound) {
         this.btAdapter = adapter;
         this.msgHandler = new Handler();
-        this.scanResult = scanResult;
+        this.deviceFound = deviceFound;
         this.context = context;
     }
 
@@ -297,9 +294,6 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
     public void onServicesDiscovered(final BluetoothGatt gatt, final int status) {
         SimpleLogger.getInstance().log(TAG_NAME, "onServicesDiscovered. ");
 
-        isReadyToUse = true;
-
-
         List<BluetoothGattService> serviceList = gatt.getServices();
 
         for( BluetoothGattService service: serviceList){
@@ -314,7 +308,7 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
             SimpleLogger.getInstance().log(TAG_NAME, "onServicesDiscovered: " + service.getUuid());
         }
 
-        //uiMessageHandler.updateUIMessage("Device is ready");
+        isReadyToUse = true;
     }
 
 
@@ -358,7 +352,20 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
     public void enableNotification( UUID serviceUUID,
                              UUID characteristicUUID,
                              boolean enable ){
-                             //ReadWriteListener callback ){
+
+        final BluetoothGattCharacteristic bleChar =
+                mGatt.getService(serviceUUID)
+                        .getCharacteristic(characteristicUUID);
+
+        if( ! mGatt.setCharacteristicNotification( bleChar, enable )){
+            throw new RuntimeException("failed to set notification for " +
+                    bleChar.getUuid());
+        }
+    }
+
+    public void writeDescriptor( UUID serviceUUID,
+                                 UUID characteristicUUID,
+                                 byte[] values ){
 
         final BluetoothGattCharacteristic bleChar =
                 mGatt.getService(serviceUUID)
@@ -370,12 +377,7 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
             throw new NullPointerException("can not get descriptor for : " + bleChar.getUuid());
         }
 
-        if( ! mGatt.setCharacteristicNotification( bleChar, enable )){
-            throw new RuntimeException("failed to set notification for " +
-                    bleChar.getUuid());
-        }
-
-        descriptor.setValue( new byte[]{ NOTIFICATION_ENABLED_MASK} );
+        descriptor.setValue( values );
         mGatt.writeDescriptor(descriptor);
     }
 
@@ -424,7 +426,7 @@ public class DeviceManagerImpl extends BluetoothGattCallback implements DeviceMa
                         BLEDeviceInfo(result.getDevice().getAddress(), result.getDevice().getName());
 
                 //DataManager.getInstance().saveScanResult(info);
-                scanResult.onScanResult( info );
+                deviceFound.onDeviceFound( info );
 
                 if( null != info.name && info.name.equals( targetDeviceName )){
                     if( isScanning ){

@@ -1,6 +1,6 @@
 package com.peripheral.ble;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import java.util.UUID;
 
@@ -15,6 +15,10 @@ public interface DeviceManager {
     void enableNotification( UUID serviceUUID,
                              UUID characteristicUUID,
                              boolean enable);
+
+    void writeDescriptor( UUID serviceUUID,
+                          UUID characteristicUUID,
+                          byte[] value );
 
     //boolean isConnected();
 

@@ -20,7 +20,14 @@ allprojects {
         maven { url "https://maven.google.com" }
 
         jcenter()
+        google()
     }
+}
+
+ext {
+    rx2Java = "2.2.16"
+    rx2Android = "2.1.1"
+    rx2Relay = "2.1.1"
 }
 
 task clean(type: Delete) {

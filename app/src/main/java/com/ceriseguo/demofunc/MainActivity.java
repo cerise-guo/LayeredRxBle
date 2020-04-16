@@ -7,25 +7,25 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
-//import com.peripheral.ble.BLEDeviceManager;
-//import com.peripheral.data.DataManager;
 import com.peripheral.bl.ButtonController;
 import com.peripheral.bl.LEDController;
 import com.peripheral.bl.MyBackgroundService;
+import com.peripheral.bl.StateProviderImpl;
 import com.peripheral.logger.SimpleLogger;
 
-import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 
 public class MainActivity extends AppCompatActivity implements UIMessage {
 
-    public final static String TAG_NAME = "DemoFuncBootComplete";
+    public final static String TAG_NAME = "DemoFuncRxBLE";
 
     TextView statusView;
 
@@ -42,7 +42,12 @@ public class MainActivity extends AppCompatActivity implements UIMessage {
 
         statusView = (TextView)findViewById(R.id.status_text);
 
-        //BLEDeviceManager.initiate(this);
+        SimpleLogger.addUIListener(new SimpleLogger.UILogListener() {
+            @Override
+            public void onLogMessage(String msg) {
+                updateUIMessage( msg );
+            }
+        });
 
     }
 
@@ -73,14 +78,18 @@ public class MainActivity extends AppCompatActivity implements UIMessage {
         MyBackgroundService.stopLoop();
     }
 
+    Consumer<String> stateListener = new Consumer<String>() {
+        @Override
+        public void accept(String state) {
+            SimpleLogger.getInstance().log(TAG_NAME, "got state: " + state );
+        }
+    };
+
     public void onClickC( View view)
     {
-        Log.d(TAG_NAME, "will dump discovered devices.");
-        //final List<String> devices = DataManager.getInstance().deviceList();
+        Log.d(TAG_NAME, "start monitor state.");
 
-        //for(String deviceInfo : devices ){
-        //    Log.d(TAG_NAME, deviceInfo);
-        //}
+        StateProviderImpl.getInstance().registerListener( stateListener );
     }
 
     //Don't instantiate the LEDController too early, else it won't be able to get gatt properly.
@@ -92,7 +101,7 @@ public class MainActivity extends AppCompatActivity implements UIMessage {
         if( null == ledController ){
             ledController = new LEDController();
         }
-        ledController.TurnOffLED();
+        ledController.TurnOnLED( false );
     }
 
     public void onClickE( View view)
@@ -102,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements UIMessage {
         if( null == ledController ){
             ledController = new LEDController();
         }
-        ledController.TurnOnLED();
+        ledController.TurnOnLED( true );
     }
 
     public void onClickF( View view)
@@ -112,12 +121,15 @@ public class MainActivity extends AppCompatActivity implements UIMessage {
         if( null == ledController ){
             ledController = new LEDController();
         }
-        ledController.getLEDStatus(new LEDController.LEDStatusCallback() {
-            @Override
-            public void ledStatus(boolean isOn) {
-                Log.d(TAG_NAME, "isLEDOn : " + (isOn?"YES":"No") );
+        ledController.getLEDStatus(OnOrOff -> {
+            Log.d(TAG_NAME, "LED Status : " + OnOrOff);
+            runOnUiThread( ()->{
+                final String message = "LED status : " + (OnOrOff?"On":"Off");
+                updateUIMessage(message);
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            });
             }
-        });
+        );
     }
 
     ButtonController btnController = null;
@@ -128,11 +140,13 @@ public class MainActivity extends AppCompatActivity implements UIMessage {
         if( null == btnController ){
             btnController = new ButtonController();
         }
-        btnController.MonitorButton(new ButtonController.ButtonClickCallback() {
-            @Override
-            public void onButtonClick(int value) {
-                Log.d(TAG_NAME, "button clicked: " + value );
-            }
+        btnController.MonitorButtonClick(value -> {
+            Log.d(TAG_NAME, "button clicked: " + value );
+            runOnUiThread( ()->{
+                final String message = "button clicked";
+                updateUIMessage( message );
+                Toast.makeText(this, "button clicked", Toast.LENGTH_SHORT).show();
+            });
         });
     }
 

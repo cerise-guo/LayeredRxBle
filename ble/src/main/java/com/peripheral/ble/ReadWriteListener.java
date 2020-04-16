@@ -1,8 +1,9 @@
 package com.peripheral.ble;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
-public interface ReadWriteListener {
+//Note: this interface is NOT public and only accessible internally by BLE module.
+interface ReadWriteListener {
     void onRead( boolean success, @NonNull final byte[] value );
 
     void onWrite( boolean success );

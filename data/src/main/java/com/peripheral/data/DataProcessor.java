@@ -1,6 +1,8 @@
 package com.peripheral.data;
 
-public interface DataProcessor {
+
+//Note: this interface is NOT public and only accessible internally by BLE module.
+interface DataProcessor {
 
     byte[] encode( byte value );
 

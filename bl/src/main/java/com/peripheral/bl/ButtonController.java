@@ -1,50 +1,57 @@
 package com.peripheral.bl;
 
 import com.peripheral.data.ButtonCharacteristic;
-import com.peripheral.data.ButtonStatusListener;
 import com.peripheral.data.DeviceHelper;
 import com.peripheral.logger.SimpleLogger;
 
-import java.lang.ref.WeakReference;
+import io.reactivex.disposables.Disposable;
 
 public class ButtonController {
     private final String TAG_NAME = "ButtonController";
 
     private ButtonCharacteristic btnCharactertistic;
 
-    private WeakReference<ButtonClickCallback> buttonStatusCallback;
-
-    private ButtonClickCallback buttonCallback;
+    Disposable buttonDisposable = null;
 
     public ButtonController(){
         this.btnCharactertistic = DeviceHelper.getDongleService().getButtonCharacter();
         if( null == btnCharactertistic ){
             throw new NullPointerException("Null Button Characteristic in ButtonController ctor");
         }
+    }
 
-        btnCharactertistic.setListener(new ButtonStatusListener() {
-            @Override
-            public void onClick(int value) {
+    Disposable buttonValueDisposable;
 
-                SimpleLogger.getInstance().log( TAG_NAME, "button is clicked");
+    public void MonitorButtonClick( ButtonClickCallback callback ){
 
-                if( null != buttonCallback ){
-                    buttonCallback.onButtonClick( value );
+        if( buttonDisposable != null && !buttonDisposable.isDisposed()){
+            throw new RuntimeException("Button Controller get led status overlapped.");
+        }
+
+        if (null != buttonValueDisposable) {
+            buttonDisposable.dispose();
+            SimpleLogger.getInstance().log(TAG_NAME, "disposed previous button observer.");
+        }
+
+        buttonValueDisposable = btnCharactertistic.monitorValue().subscribe( value->{
+           SimpleLogger.getInstance().log(TAG_NAME, "button value: " + value.intValue());
+           callback.onButtonClick( value );
+        });
+
+        buttonDisposable = btnCharactertistic.enableNotification( true )
+                .doOnSubscribe( disposable -> {
+            SimpleLogger.getInstance().log(TAG_NAME,"subscribe button notification result");
+        }).doOnError( throwable -> {
+                    SimpleLogger.getInstance().log(TAG_NAME,"subscribe button notification exception: " + throwable );
                 }
+        ).subscribe( result ->{
+            SimpleLogger.getInstance().log(TAG_NAME, "RX Button notification : " + result );
+            if( null != buttonDisposable ) {
+                buttonDisposable.dispose();
+                buttonDisposable = null;
             }
         });
     }
-
-    public void StopMonitorButton(){
-        buttonCallback = null;
-    }
-
-    public void MonitorButton( ButtonClickCallback callback ){
-        buttonCallback = callback;
-
-        btnCharactertistic.enableNotification( true );
-    }
-
 
     public interface ButtonClickCallback{
         void onButtonClick( int value );

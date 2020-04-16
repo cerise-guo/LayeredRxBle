@@ -1,14 +1,15 @@
 package com.peripheral.data;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 import com.peripheral.ble.BLECharacteristic;
 import com.peripheral.ble.DeviceManager;
-import com.peripheral.ble.ReadWriteListener;
 import com.peripheral.ble.ReadWriteListenerImpl;
 
 import java.util.UUID;
+
+import io.reactivex.Single;
 
 public class LEDCharacteristic{ //extends BLECharacteristic {
 
@@ -18,7 +19,7 @@ public class LEDCharacteristic{ //extends BLECharacteristic {
     final private DataProcessor dataProcessor;
 
     //This listener is to return LED status to caller layer, e.g. business logic and/or app layer.
-    private LEDStatusListener ledStatusListener;
+    //private LEDStatusListener ledStatusListener;
 
     final BLECharacteristic bleCharacteristic;
 
@@ -30,58 +31,15 @@ public class LEDCharacteristic{ //extends BLECharacteristic {
         this.bleCharacteristic = DataHelper.buildCharacteristic(
                 deviceManager, serviceUUID, LED_CHAR_UUID );
         this.dataProcessor = processor;
-        this.bleCharacteristic.setListener( new LEDListener() );
-
     }
 
-    /*public LEDCharacteristic(
-            DeviceManager deviceManager,
-            UUID serviceUUID,
-            DataProcessor processor){
-        super(deviceManager, serviceUUID, LED_CHAR_UUID);
-
-        //this listener is to receive low level BLE result from BLE layer.
-        this.setListener( new LEDListener() );
-
-        this.dataProcessor = processor;
-    }*/
-
-    public void writeLEDValue( byte value ){
-        bleCharacteristic.write( dataProcessor.encode(value));
+    public Single<Boolean> writeValue( byte value ){
+        return bleCharacteristic.rxWrite( dataProcessor.encode(value));
     }
 
-    public void readLEDValue(){
-        bleCharacteristic.read();
-    }
-
-    public void setListener( LEDStatusListener listener ){
-        if(null != this.ledStatusListener){
-            throw new RuntimeException( "shouldn't set listener twice for LEDCharacteristic");
-        }
-        this.ledStatusListener = listener;
-    }
-
-    private class LEDListener extends ReadWriteListenerImpl {
-        @Override
-        public void onRead(boolean success, @NonNull byte[] value) {
-
-            byte val = (null == value)?0:value[0];
-            Log.d(TAG_NAME, "onRead : " + success + " : " + val );
-
-            if( null != ledStatusListener ) {
-                //ToDo: will this block further call ?
-                ledStatusListener.onLEDStatus(0 != dataProcessor.decode(value));
-            }
-        }
-
-        @Override
-        public void onWrite(boolean success) {
-            Log.d(TAG_NAME, "onWrite : " + success );
-        }
-
-        @Override
-        public void onUpdate(byte[] value) {
-            Log.d(TAG_NAME, "onUpdate : " + value[0] );
-        }
+    public Single<Boolean> readValue(){
+        return bleCharacteristic.rxRead().map( rawValue ->{
+                    return 0 != dataProcessor.decode(rawValue); }
+                );
     }
 }

@@ -1,6 +1,6 @@
 package com.peripheral.ble;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import com.peripheral.logger.SimpleLogger;
 

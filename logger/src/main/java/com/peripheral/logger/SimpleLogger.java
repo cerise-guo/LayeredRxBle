@@ -11,6 +11,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import androidx.annotation.NonNull;
+
 public class SimpleLogger {
     private String TAG_NAME = "SimpleLogger";
 
@@ -18,6 +20,15 @@ public class SimpleLogger {
     final SimpleDateFormat timeStampFormat = new SimpleDateFormat("dd HH:mm:ss:SSS");
     static String logPath;
     static volatile private SimpleLogger instance;
+
+
+    //Note: this can be a temporary solution to dump log message to UI layer.
+    //This log listener allows hooking one external listener to receive all log messages.
+    static private UILogListener externalLogListener = null;
+    public interface UILogListener {
+        void onLogMessage( String msg );
+    }
+
 
     private SimpleLogger() {}
     public static SimpleLogger getInstance(){
@@ -29,6 +40,13 @@ public class SimpleLogger {
             }
         }
         return instance;
+    }
+
+    public static void addUIListener(@NonNull UILogListener listener ){
+        if( null != SimpleLogger.externalLogListener ){
+            throw new RuntimeException("Already set UI log listener");
+        }
+        SimpleLogger.externalLogListener = listener;
     }
 
     static public void setLogPath(String path ){
@@ -43,6 +61,10 @@ public class SimpleLogger {
 
         logQueue.add(logMessage);
         Log.d(tag, logMessage);
+
+        if( null != SimpleLogger.externalLogListener ){
+            externalLogListener.onLogMessage(logMessage);
+        }
 
         if( 100 == logQueue.size()){
             flushLogToDisk();

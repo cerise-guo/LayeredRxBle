@@ -2,11 +2,12 @@ package com.peripheral.bl;
 
 import android.content.Context;
 import android.content.Intent;
-import android.support.annotation.NonNull;
-import android.support.v4.app.JobIntentService;
+import androidx.annotation.NonNull;
+import androidx.core.app.JobIntentService;
+import io.reactivex.disposables.Disposable;
+
 import android.util.Log;
 
-import com.peripheral.data.DataManager;
 import com.peripheral.data.DataManagerImpl;
 import com.peripheral.logger.SimpleLogger;
 
@@ -26,8 +27,7 @@ public class MyBackgroundService extends JobIntentService {
 
     public static int LOOP_INTERVAL = 2000; //millisecond
 
-    //private static BLEScanner bleScanner;
-    //private static BLEDeviceManager deviceManager;
+    static Disposable deviceStatusDisposable;
 
     public static void enqueueWork(Context context, Intent intent) {
 
@@ -41,6 +41,10 @@ public class MyBackgroundService extends JobIntentService {
 
         if( !DataManagerImpl.getInstance().isInitialized()){
             DataManagerImpl.getInstance().initiate(context);
+
+            deviceStatusDisposable = DataManagerImpl.getInstance().isDeviceReady().subscribe( deviceStatus ->{
+                SimpleLogger.getInstance().log(TAG_NAME, "device status : " + deviceStatus);
+            });
         }
 
         SimpleLogger.getInstance().log(TAG_NAME, "MyBackgroundService enqueueWork is called");
