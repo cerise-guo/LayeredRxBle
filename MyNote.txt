@@ -1,0 +1,48 @@
+
+
+2019-12-14 23:00:19.877 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl: service UUID : 00001800-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.877 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:     characteristic UUID : 00002a00-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.877 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:     characteristic UUID : 00002a01-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.878 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:     characteristic UUID : 00002a04-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.879 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:     characteristic UUID : 00002aa6-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.880 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl: 14 23:00:19:879 DeviceManagerImpl : onServicesDiscovered: 00001800-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.881 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl: service UUID : 00001801-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.882 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl: 14 23:00:19:881 DeviceManagerImpl : onServicesDiscovered: 00001801-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.882 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl: service UUID : 00001567-1212-efde-1523-785feabcd123
+2019-12-14 23:00:19.883 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:     characteristic UUID : 00001524-1212-efde-1523-785feabcd123
+2019-12-14 23:00:19.883 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:           descriptor UUID : 00002902-0000-1000-8000-00805f9b34fb
+2019-12-14 23:00:19.884 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl:     characteristic UUID : 00001525-1212-efde-1523-785feabcd123
+2019-12-14 23:00:19.885 13729-13747/com.ceriseguo.demofunc D/DeviceManagerImpl: 14 23:00:19:884 DeviceManagerImpl : onServicesDiscovered: 00001567-1212-efde-1523-785feabcd123
+2019-12-14 23:00:19.948 13729-13747/com.ceriseguo.demofunc D/BluetoothGatt: onConnectionUpdated() - Device=C1:65:3D:5E:EA:0A interval=25 latency=0 timeout=500 status=0
+2019-12-14 23:00:39.592 13729-13747/com.ceriseguo.demofunc D/BluetoothGatt: onConnectionUpdated() - Device=C1:65:3D:5E:EA:0A interval=150 latency=0 timeout=400 status=0
+
+
+
+
+BleGattClientCharacteristic :: enableNotification()
+
+
+
+
+PackageUpdateManagerPumpImpl :: download() --> 
+
+GattStreamingTransaction :: send( request, data[], timeout )  --> 
+
+GattStreamingTransaction :: send( request, data[], timeout, resume )  --> 
+
+{ 1. controlPoint :: enableNotification() //No async return,   2. (below func to monitor return ) }   
+
+GattStreamingTransaction :: streamOutgoingData() --> 
+
+GattStreamer :: send() --> 
+
+GattStreamer :: startReceivingStreamData()  --> 		// Called two places   //how this stream gets its ble characteristic --> when GattStreamingTransaction::ctor(), GattStream and GattStreamTransaction are initialized with same ble charactertistic agent object.
+
+TypedBleGattClientCharacteristicImpl :: rxUpdateConfiguration()  -->  
+
+{ 1. add listener to hook low layer callback to start Rx Style  2. below function to write descriptor as non-Rx Call}
+
+TypedBleGattClientCharacteristicImpl :: updateConfiguration() -->
+
+//writeDescriptor
+BleGattClientCharacteristic :: updateConfiguration()
